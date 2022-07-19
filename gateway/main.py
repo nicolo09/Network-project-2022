@@ -3,22 +3,44 @@ from http import client
 from socket import *
 import threading
 
-connected_drones = []
+connected_drones = {}
 deliveries_to_do = []
 deliveries_in_progress = {}
 bufferSize = 1024
+localhost = "127.0.0.1"
+timeout = 3
+clientConnectionSocket = None
 
-
+def start_deliver(drone, address):
+    if deliveries_in_progress.get(drone) is None:
+        print("Telling drone {drone} to deliver to {address}".format(drone=drone, address=address))
+        droneSocket.sendto("deliver:{address}".format(address=address), (localhost, drone[1]))
+        try:
+            message = ""
+            while message != "OK":
+                droneSocket.settimeout(timeout)
+                bytesAddressPair, realAddress = droneSocket.recvfrom(bufferSize)
+                # Get the drone's address and port from message
+                payload = bytesAddressPair.decode("utf-8").split(":")
+                addressPort = (payload[0], realAddress[1])
+                message = (payload[1])
+                if (message == "OK"):
+                    deliveries_in_progress[drone] = address
+            #else handle all messages arrived from drones
+        except timeout:
+            print("Drone {drone} timed out, telling client...".format(drone=drone))
+            connected_drones.pop(drone)
+            tell_client("Failed due to {drone} timeout".format(drone=drone))
+    
 def wait_for_drone(droneSocket):
     while True:
         print("Thread waiting for a drone to register as free on {this_ip}:{drone_port}".format(
             this_ip=gethostbyname(gethostname()), drone_port=dronePort))
-        bytesAddressPair = droneSocket.recvfrom(bufferSize)
-
+        bytesAddressPair, realAddress = droneSocket.recvfrom(bufferSize)
         # Get the drone's address and port from message
-        payload = bytesAddressPair[0].decode("utf-8").split(":")
-        addressPort = (payload[0], int(payload[1]))
-        message = (payload[2])
+        payload = bytesAddressPair.decode("utf-8").split(":")
+        addressPort = (payload[0], realAddress[1])
+        message = (payload[1])
 
         print("Message from drone:{}".format(message))
         print("Drone IP Address:{}".format(addressPort))
@@ -26,19 +48,22 @@ def wait_for_drone(droneSocket):
         if (message == "register"):
             print("Drone registered as free on {address}".format(
                 address=addressPort[0], port=addressPort[1]))
-            connected_drones.append(addressPort)
+            connected_drones[addressPort[0]](addressPort[1])
+            droneSocket.sendto(b"OK", realAddress)
         elif (message == "unregister"):
             print("Drone unregistered on {address}".format(
                 address=addressPort[0], port=addressPort[1]))
-            connected_drones.remove(addressPort)
+            connected_drones.pop(addressPort)
+            droneSocket.sendto(b"OK", realAddress)
         elif (message == "delivered"):
             print("Drone {drone} delivered to {delivery_address}. Now its free.".format(
                 drone=addressPort, delivery_address=deliveries_in_progress[addressPort]))
             deliveries_in_progress.pop(addressPort)
-        elif (message == "fail"):
-            print("Drone {drone} failed to deliver to {delivery_address}. Now its free.".format(
-                drone=addressPort, delivery_address=deliveries_in_progress[addressPort]))
-            deliveries_to_do.append(deliveries_in_progress.pop(addressPort))
+            droneSocket.sendto(b"OK", realAddress)
+        # elif (message == "failed"):
+        #     print("Drone {drone} failed to deliver to {delivery_address}. Now its free.".format(
+        #         drone=addressPort, delivery_address=deliveries_in_progress[addressPort]))
+        #     deliveries_to_do.append(deliveries_in_progress.pop(addressPort))
         print(connected_drones)
 
 
@@ -70,13 +95,15 @@ def wait_for_client(clientSocket):
                     payload = bytesAddressPair.decode("utf-8").split(":")
                     addressPort = (payload[0], int(payload[1]))
                     command = (payload[2])
-                    data = (payload[3])
+                    data = (payload[3:])
                     print("Message from client:{}".format(command))
                     print("Client IP Address:{}".format(addressPort))
                     if (command == "deliver"):
-                        print("Client {client} wants to deliver to {delivery_address}".format(
-                            client=addressPort, delivery_address=payload[3]))
-                        deliveries_to_do.append((addressPort, payload[3]))
+                        drone = data[0]
+                        address = data[1]
+                        print("Client {client} wants {drone} to deliver to {delivery_address}".format(
+                            client=addressPort, drone=drone, delivery_address=address))
+                        start_deliver(drone, payload[3])
                     elif (command == "drones"):
                         print("Client {client} wants to know all available drones".format(
                             client=addressPort))
@@ -84,6 +111,9 @@ def wait_for_client(clientSocket):
                         clientConnectionSocket.send(bytes(str(connected_drones), "utf-8"))
             except:
                 print("Client {client} dropped".format(client=connectedClient))
+
+def tell_client(message):
+    clientConnectionSocket.send(bytes(message, "utf-8"))
 
 # Host dal lato droni
 droneIp = "localhost"
