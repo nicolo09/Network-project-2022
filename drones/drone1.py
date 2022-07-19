@@ -18,17 +18,18 @@ try:
     response, gateway = s.recvfrom(4096) 
     # Verifying that the gateway received the message
     # and waiting for a response
-    if response == "OK":
+    if response.decode('utf-8') == "OK":
         print("Ready to serve...")
-        s.settimeout(0)
+        s.settimeout(None)
         while True:
             # Getting the delivery address from the gateway 
             data, gateway = s.recvfrom(4096)
-            payload = data[0].decode('utf-8').split(":")
+            payload = data.decode('utf-8').split(":")
             command = payload[0]
             if command == "deliver":
                 address = payload[1]
-                s.sendto("OK".encode(),gateway_address)
+                message = ip + ":OK"
+                s.sendto(message.encode(),gateway_address)
                 print("Delivering to: %s" % address)
                 # The drone takes some time to deliver the package
                 time.sleep(random.randint(1, 5)) 
