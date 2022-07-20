@@ -129,10 +129,18 @@ def wait_for_client(clientSocket):
                             client=addressPort, drone=drone, delivery_address=address))
                         with deliveriesLock:
                             #Try to add delivery job to deliveries to do
-                            if drone not in deliveries_to_do:
-                                deliveries_to_do[drone] = address
+                            
+                            #Check if requested drone is connected and is free
+                            if drone not in connected_drones:
+                                message = "Failed due to {drone} not connected".format(drone=drone)
+                                print(message)
+                                tell_client(message)
+                            elif drone in deliveries_to_do:
+                                message = "{drone} already busy (delivering to {address})".format(drone=drone, address=deliveries_to_do[drone])
+                                print(message)
+                                tell_client(message)
                             else:
-                                tell_client("Failed due to {drone} already busy".format(drone=drone))
+                                deliveries_to_do[drone] = address
                     elif (command == "drones"):
                         #Send to client the list of connected drones
                         print("Client {client} wants to know all available drones, sending list...".format(
