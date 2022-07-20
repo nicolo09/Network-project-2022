@@ -20,6 +20,7 @@ for tries in range(1,5):
         # and waiting for a response
         s.sendto(message.encode(), gateway_address)
         response, gateway = s.recvfrom(bufsize)
+        break
     except sk.timeout:
         print("Couldn't register to gateway. Attempt: %d" % tries)
         if tries == 5:
@@ -53,6 +54,7 @@ if (not flag) and response.decode('utf-8') == "OK":
                         s.sendto(message.encode() ,gateway_address)
                         # Waiting response from gateway
                         response, gateway = s.recvfrom(bufsize)
+                        break
                     except sk.timeout:
                         print("Waiting for response failed. Attempt: %d" % tries)
                         # The drone stops trying to receive a response after 5 tries
