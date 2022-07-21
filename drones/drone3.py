@@ -14,7 +14,7 @@ flag = False # flag used for message controls
 gateway_address = ('localhost',gateway_port)
 
 message = ip + ":register"
-for tries in range(1,5):
+for tries in range(1,6):
     try:
         # Verifying that the gateway received the message
         # and waiting for a response
@@ -47,7 +47,7 @@ if (not flag) and response.decode('utf-8') == "OK":
                 message = ip + ":delivered"
                 s.settimeout(5)
                 print("Delivery successful")
-                for tries in range(1,5):
+                for tries in range(1,6):
                     try:
                         # Informing the gateway that the delivery was successful
                         # and the drone is ready for the next delivery
