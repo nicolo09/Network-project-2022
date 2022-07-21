@@ -1,4 +1,4 @@
-from http import client
+import signal
 from socket import *
 import threading
 
@@ -84,16 +84,24 @@ def wait_for_drone(droneSocket):
                     for delivery in deliveries_to_do:
                         start_deliver(delivery, deliveries_to_do[delivery])
                     deliveries_to_do.clear()
+        except error:
+            print("Drone thread is terminating")
+            return
 
 def wait_for_client(clientSocket):
     #This while makes it possible for a client to reconnect after a disconnection
     while True:
-        #Wait for client to connect on TCP socket
-        print("Thread waiting for a client to register on {this_ip}:{client_port}".format(
-            this_ip=gethostbyname(gethostname()), client_port=clientPort))
-        clientSocket.listen(1)
-        global clientConnectionSocket
-        clientConnectionSocket, clientRealAddress = clientSocket.accept()
+        try:
+            #Wait for client to connect on TCP socket
+            print("Thread waiting for a client to register on {this_ip}:{client_port}".format(
+                this_ip=gethostbyname(gethostname()), client_port=clientPort))
+            clientSocket.listen(1)
+            global clientConnectionSocket
+            clientConnectionSocket, clientRealAddress = clientSocket.accept()
+        except error:
+            #Error on accept, socket is not valid or it has been closed, terminate thread
+            print("Client thread is terminating")
+            return
         try:
             #Client has opened connection, wait for registering message
             print("Client trying to register...")
@@ -166,24 +174,43 @@ def tell_client(message):
     if (clientConnectionSocket is not None):
         clientConnectionSocket.send(message.encode("utf-8"))
 
-# Drone side ip
-droneIp = "localhost"
-# Drone side port
-dronePort = 25000
-# Create a DGRAM (UDP) type socket for drones
-droneSocket = socket(AF_INET, SOCK_DGRAM)
-droneSocket.bind((droneIp, dronePort))
+def exit_gracefully(_signo, _stack_frame):
+    #Close all sockets and exit
+    print("Exiting...")
+    droneSocket.close()
+    clientSocket.shutdown(SHUT_RDWR)
+    clientSocket.close()
+    global clientConnectionSocket
+    clientConnectionSocket.shutdown(SHUT_RDWR)
+    clientConnectionSocket.close()
+    clientThread.join()
+    droneThread.join()
 
-# Thread that handles drone messages
-threading.Thread(target=wait_for_drone, args=[droneSocket]).start()
+if __name__ == "__main__":
+    # Drone side ip
+    droneIp = "localhost"
+    # Drone side port
+    dronePort = 25000
+    # Create a DGRAM (UDP) type socket for drones
+    droneSocket = socket(AF_INET, SOCK_DGRAM)
+    droneSocket.bind((droneIp, dronePort))
 
-# Client side ip
-clientIp = "localhost"
-# Client side port
-clientPort = 26000
-# Create a STREAM (TCP) type socket for client
-clientSocket = socket(AF_INET, SOCK_STREAM)
-clientSocket.bind((clientIp, clientPort))
 
-# Thread that handles client messages
-threading.Thread(target=wait_for_client, args=[clientSocket]).start()
+    # Thread that handles drone messages
+    droneThread = threading.Thread(target=wait_for_drone, args=[droneSocket])
+    droneThread.start()
+
+    # Client side ip
+    clientIp = "localhost"
+    # Client side port
+    clientPort = 26000
+    # Create a STREAM (TCP) type socket for client
+    clientSocket = socket(AF_INET, SOCK_STREAM)
+    clientSocket.bind((clientIp, clientPort))
+
+    # Thread that handles client messages
+    clientThread = threading.Thread(target=wait_for_client, args=[clientSocket])
+    clientThread.start()
+
+    signal.signal(signal.SIGINT, exit_gracefully)
+    signal.signal(signal.SIGTERM, exit_gracefully)
