@@ -10,21 +10,28 @@ bufsize = 4096 # buffer size
 ip = "192.168.1.5" # IP address of this drone
 gateway_port = 25000 # Port used by the gateway
 flag = False # flag used for message controls
+MAX_ATTEMPTS = 5 # max number of attempts to receive response from the gateway
 
-gateway_address = ('localhost',gateway_port)
+gateway_address = ('localhost', gateway_port)
 
 message = ip + ":register"
-for tries in range(1,6):
+tries = 1
+while tries <= MAX_ATTEMPTS:
     try:
         # Verifying that the gateway received the message
         # and waiting for a response
         s.sendto(message.encode(), gateway_address)
         response, gateway = s.recvfrom(bufsize)
         break
+    # The response took too much time to arrive
     except sk.timeout:
         print("Couldn't register to gateway. Attempt: %d" % tries)
-        if tries == 5:
+        if tries == MAX_ATTEMPTS:
             flag = True
+        tries = tries + 1
+    # The gateway could still be offline
+    except ConnectionResetError:
+        pass
 # Checking response            
 if (not flag) and response.decode('utf-8') == "OK":
     print("Ready to serve...")
@@ -40,25 +47,25 @@ if (not flag) and response.decode('utf-8') == "OK":
                 address = payload[1]
                 # Informing the gateway that the delivery has started
                 message = ip + ":OK"
-                s.sendto(message.encode(),gateway_address)
+                s.sendto(message.encode(), gateway_address)
                 print("Delivering to: %s" % address)
                 # The drone takes some time to deliver the package
                 time.sleep(random.randint(1, 5)) 
                 message = ip + ":delivered"
                 s.settimeout(5)
                 print("Delivery successful")
-                for tries in range(1,6):
+                for tries in range(1, MAX_ATTEMPTS + 1):
                     try:
                         # Informing the gateway that the delivery was successful
                         # and the drone is ready for the next delivery
-                        s.sendto(message.encode() ,gateway_address)
+                        s.sendto(message.encode(), gateway_address)
                         # Waiting response from gateway
                         response, gateway = s.recvfrom(bufsize)
                         break
                     except sk.timeout:
                         print("Waiting for response failed. Attempt: %d" % tries)
                         # The drone stops trying to receive a response after 5 tries
-                        if tries == 5:
+                        if tries == MAX_ATTEMPTS:
                             flag = True
                             
                 if flag or response.decode('utf-8') != "OK":
