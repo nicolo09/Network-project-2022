@@ -30,7 +30,6 @@ def start_deliver(drone, address):
                 if (message == "OK"):
                     deliveries_in_progress[drone] = address
                     print("Drone {drone} is now delivering to {address}".format(drone=drone, address=address))
-                #TODO here could save and handle all other messages arrived from drones in the meanwhile
         except timeout:
             #Drone did not respond in time assuming it has timed out, inform client
             print("Drone {drone} timed out, telling client...".format(drone=drone))
@@ -112,42 +111,56 @@ def wait_for_client(clientSocket):
                 address=addressPort[0], port=addressPort[1]))
             connectedClient = addressPort
             #Client registration complete
+            closed = False
             try:
                 #Message handling loop
-                while True:
+                while closed == False:
                     bytesAddressPair = clientConnectionSocket.recv(bufferSize)
                     # Get the client's address and port from message
                     payload = bytesAddressPair.decode("utf-8").split(":")
-                    addressPort = (payload[0], clientRealAddress[1])
-                    command = payload[1]
-                    data = payload[2:]
-                    print("Client({client}): {command}".format(client=addressPort[0]+":"+str(addressPort[1]),command=command))
-                    if (command == "deliver"):
-                        #Deliver message received
-                        drone = data[0]
-                        address = data[1]
-                        print("Client {client} wants {drone} to deliver to {delivery_address}".format(
-                            client=addressPort, drone=drone, delivery_address=address))
-                        with deliveriesLock:
-                            #Try to add delivery job to deliveries to do, check if requested drone is connected and is free
-                            if drone not in connected_drones:
-                                message = "fail: {drone} not connected".format(drone=drone)
-                                print(message)
-                                tell_client(message)
-                            elif drone in deliveries_to_do or drone in deliveries_in_progress:
-                                message = "fail: {drone} already busy".format(drone=drone)
-                                print(message)
-                                tell_client(message)
-                            else:
-                                deliveries_to_do[drone] = address
-                    elif (command == "drones"):
-                        #Send to client the list of connected drones
-                        print("Client {client} wants to know all available drones, sending list...".format(
-                            client=addressPort))
-                        tell_client(str(connected_drones))
-            except socket.error as e:
+                    if (payload[0] == ""):
+                        print("Client closed connection")
+                        clientConnectionSocket.close()
+                        closed = True
+                    else:    
+                        addressPort = (payload[0], clientRealAddress[1])
+                        command = payload[1]
+                        data = payload[2:]
+                        print("Client({client}): {command}".format(client=addressPort[0]+":"+str(addressPort[1]),command=command))
+                        if (command == "deliver"):
+                            #Deliver message received
+                            drone = data[0]
+                            address = data[1]
+                            print("Client {client} wants {drone} to deliver to {delivery_address}".format(
+                                client=addressPort, drone=drone, delivery_address=address))
+                            with deliveriesLock:
+                                #Try to add delivery job to deliveries to do, check if requested drone is connected and is free
+                                if drone not in connected_drones:
+                                    message = "fail: {drone} not connected".format(drone=drone)
+                                    print(message)
+                                    tell_client(message)
+                                elif drone in deliveries_to_do or drone in deliveries_in_progress:
+                                    message = "fail: {drone} already busy".format(drone=drone)
+                                    print(message)
+                                    tell_client(message)
+                                else:
+                                    deliveries_to_do[drone] = address
+                        elif (command == "drones"):
+                            #Send to client the list of connected drones
+                            print("Client {client} wants to know all available drones, sending list...".format(
+                                client=addressPort))
+                            tell_client(str(connected_drones))
+                        else:
+                            tell_client("unknown command")
+            except error as e:
                 print("Client {client} dropped".format(client=connectedClient))
                 print(e)
+                clientConnectionSocket.close()
+                closed = True
+        else:
+            clientConnectionSocket.shutdown(SHUT_RDWR)
+            clientConnectionSocket.close()
+            print("Client did not send cregister command, connection dropped")
 
 def tell_client(message):
     if (clientConnectionSocket is not None):
