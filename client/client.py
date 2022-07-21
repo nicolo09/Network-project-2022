@@ -16,14 +16,15 @@ def client_waits(s):
         with s as s:
             while True:
                 message=s.recv(BUFFER);
-                print('C:Recived message : '+message.decode())
+                print('C:Recived message:')
+                print(message.decode())
     except socket.error:
         sys.exit()
     
 
 def client_input(s):
     while True:
-        address=input("C:Insert an address to use in the delivery (insert "+d+" to request a list of available drones) ")
+        address=input("C:Insert an address to use in the delivery (insert "+d+" to request a list of available drones)\n")
         if len(address)>0:
             if address.lower()==e.lower():
                 print("C:Closing Client...")
@@ -36,7 +37,7 @@ def client_input(s):
                     s.sendall(message.encode());
                 else:
             
-                    iden=input("C:You can choose the drone to carry out your delivery. Insert IPv4 or Drone Identifier (insert -1 to go back to address input) ")
+                    iden=input("C:You can choose the drone to carry out your delivery. Insert IPv4 or Drone Identifier (insert -1 to go back to address input)\n")
                     if len(iden)>0:
                         if iden.lower()==e.lower():
                             print("C:Closing Client...")
@@ -50,7 +51,7 @@ def client_input(s):
                             
                         
         else:
-            print("C:Address is wrong, try again ")
+            print("C:Address is wrong, try again")
             
 
 if __name__=='__main__':
@@ -61,7 +62,7 @@ if __name__=='__main__':
         message = my_host+":"+'cregister'+":"
         s.sendall(message.encode())
 
-        print("C:Connected to gateway: "+str(gateway_address)+":"+str(gateway_port))
+        print("C:Connected to gateway: "+str(gateway_address)+":"+str(gateway_port)+"\n")
         print("C:Write "+e+" to close Client")
         
     except socket.error:
@@ -73,10 +74,10 @@ if __name__=='__main__':
     co=Thread(target=client_input,args=(s,))
     ci.start()
     co.start()
-    print('C:Waiting for threads to end...')
+    print('\nC:Waiting for threads to end...')
     ci.join()
     co.join()
-    print('C:Threads have ended, main ends')
+    print('\nC:Threads have ended, main ends')
     
     
             
