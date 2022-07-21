@@ -35,12 +35,25 @@
             "program": "${workspaceFolder}/gateway/main.py",
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "Client",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/client/client.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ],
     "compounds": [
         {
           "name": "Drones and gateway",
           "configurations": ["Gateway", "Drone1", "Drone2", "Drone3"],
+          "stopAll": true
+        },
+        {
+          "name": "Everything",
+          "configurations": ["Gateway", "Drone1", "Drone2", "Drone3", "Client"],
           "stopAll": true
         }
       ]
