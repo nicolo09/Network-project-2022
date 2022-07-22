@@ -1,6 +1,10 @@
 import socket
-import os
+import sys
 from threading import Thread
+import threading
+from time import sleep
+
+from sqlalchemy import true
 
 e="EXIT"
 my_host='10.10.10.1'
@@ -9,24 +13,25 @@ gateway_address = '127.0.0.1'
 gateway_port = 26000
 BUFFER=256
 d="DRONES"
+terminate_event = threading.Event()
 
 
 def client_waits(s):
     try:
         with s as s:
             while True:
-                message=s.recv(BUFFER);
+                message=s.recv(BUFFER)
                 message=message.decode()
                 if len(message)>0:
                     print('Received message:')
                     print(message)
                 else:
                     print('Gateway has disconnected, ending client')
-                    s.close()
-                    os._exit(0)
-                    
+                    terminate_event.set()
+                    return
     except socket.error:
-        os._exit(0)
+        terminate_event.set()
+        return
     
 
 def client_input(s):
@@ -37,20 +42,20 @@ def client_input(s):
                 if len(address)>0:
                     if address.lower()==e.lower():
                         print("Closing Client...")
-                        s.close()
-                        os._exit(0)
+                        terminate_event.set()
+                        return
                     else:
                         if address.lower()==d.lower():
                             print("Asking the gateway about available drones...")
                             message = my_host+":"+"drones:"
-                            s.sendall(message.encode());
+                            s.sendall(message.encode())
                         else:
                             iden=input("You can choose the drone to carry out your delivery. Insert IPv4 or (insert -1 to go back to address input)\n")
                             if len(iden)>0:
                                 if iden.lower()==e.lower():
                                     print("Closing Client...")
-                                    s.close()
-                                    os._exit(0)
+                                    terminate_event.set()
+                                    return
                                 else:
                                     if iden!=str(-1):
                                         print("Contacting the gateway about your delivery...")
@@ -58,16 +63,14 @@ def client_input(s):
                                         s.sendall(message.encode())
                 else:
                     print("Address is wrong, try again")
-            except (KeyboardInterrupt, EOFError):
-                print("Recived command to end...")
-                s.close()
-                os._exit(0)
+            except (KeyboardInterrupt, EOFError, SystemExit):
+                print("Received command to end...")
+                terminate_event.set()
+                return
     except socket.error:
         print("Closing Client...")
-        s.close()
-        os._exit(0)
-                            
-            
+        terminate_event.set()
+        return
 
 if __name__=='__main__':
     
@@ -82,15 +85,17 @@ if __name__=='__main__':
         
     except socket.error:
         print("Couldn't connect, retry later")
-        os._exit(0)
-    
-    
-    ci=Thread(target=client_waits,args=(s,))
-    co=Thread(target=client_input,args=(s,))
-    ci.start()
-    co.start()
-    ci.join()
-    co.join()
-    
-    
-            
+        sys.exit(0)
+
+    co=Thread(target=client_waits,args=(s,))
+    ci=Thread(target=client_input,args=(s,))
+    try:
+        ci.setDaemon(True)
+        ci.start()
+        co.start()
+        terminate_event.wait()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    finally:
+        s.close()
+        co.join()
