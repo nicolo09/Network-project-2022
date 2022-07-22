@@ -1,5 +1,5 @@
 import socket
-import sys
+import os
 from threading import Thread
 
 e="EXIT"
@@ -23,46 +23,49 @@ def client_waits(s):
                 else:
                     print('Gateway has disconnected, ending client')
                     s.close()
-                    sys.exit()
+                    os._exit(0)
                     
     except socket.error:
-        sys.exit()
+        os._exit(0)
     
 
 def client_input(s):
     try:
         while True:
-            address=input("Insert an address to use in the delivery (insert "+d+" to request a list of available drones)\n")
-            if len(address)>0:
-                if address.lower()==e.lower():
-                    print("Closing Client...")
-                    s.close()
-                    sys.exit()
-                else:
-                    if address.lower()==d.lower():
-                          print("Asking the gateway about available drones...")
-                          message = my_host+":"+"drones:"
-                          s.sendall(message.encode());
+            try:
+                address=input("Insert an address to use in the delivery (insert "+d+" to request a list of available drones)\n")
+                if len(address)>0:
+                    if address.lower()==e.lower():
+                        print("Closing Client...")
+                        s.close()
+                        os._exit(0)
                     else:
-                        iden=input("You can choose the drone to carry out your delivery. Insert IPv4 or (insert -1 to go back to address input)\n")
-                        if len(iden)>0:
-                            if iden.lower()==e.lower():
-                                print("Closing Client...")
-                                s.close()
-                                sys.exit()  
-                            else:
-                                if iden!=str(-1):
-                                    print("Contacting the gateway about your delivery...")
-                                    message = my_host+":"+"deliver:"+iden+":"+address
-                                    s.sendall(message.encode());
-                            
-                        
+                        if address.lower()==d.lower():
+                            print("Asking the gateway about available drones...")
+                            message = my_host+":"+"drones:"
+                            s.sendall(message.encode());
                         else:
-                            print("Address is wrong, try again")
+                            iden=input("You can choose the drone to carry out your delivery. Insert IPv4 or (insert -1 to go back to address input)\n")
+                            if len(iden)>0:
+                                if iden.lower()==e.lower():
+                                    print("Closing Client...")
+                                    s.close()
+                                    os._exit(0)
+                                else:
+                                    if iden!=str(-1):
+                                        print("Contacting the gateway about your delivery...")
+                                        message = my_host+":"+"deliver:"+iden+":"+address
+                                        s.sendall(message.encode())
+                else:
+                    print("Address is wrong, try again")
+            except (KeyboardInterrupt, EOFError):
+                print("Recived command to end...")
+                s.close()
+                os._exit(0)
     except socket.error:
         print("Closing Client...")
         s.close()
-        sys.exit() 
+        os._exit(0)
                             
             
 
@@ -79,17 +82,15 @@ if __name__=='__main__':
         
     except socket.error:
         print("Couldn't connect, retry later")
-        sys.exit()
+        os._exit(0)
     
     
     ci=Thread(target=client_waits,args=(s,))
     co=Thread(target=client_input,args=(s,))
     ci.start()
     co.start()
-    #print('\nC:Waiting for threads to end...')
     ci.join()
     co.join()
-    #print('\nC:Threads have ended, main ends')
     
     
             
