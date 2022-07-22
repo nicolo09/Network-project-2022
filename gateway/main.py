@@ -1,13 +1,15 @@
 import signal
 from socket import *
+import sys
 import threading
+import time
 
 connected_drones = {}
 deliveries_to_do = {}
 deliveries_in_progress = {}
 bufferSize = 1024
 localhost = "127.0.0.1"
-timeoutTime = 3
+timeoutTime = 4
 clientConnectionSocket = None
 deliveriesLock = threading.Lock()
 
@@ -116,7 +118,7 @@ def wait_for_client(clientSocket):
             addressPort = (payload[0], clientRealAddress[1])
             command = payload[1]
             data = payload[2]
-        except:
+        except Exception:
             print("Error receiving connection message from client")
             command = ""
         if (command == "cregister"):
@@ -170,10 +172,12 @@ def wait_for_client(clientSocket):
                 print(e)
                 clientConnectionSocket.close()
                 closed = True
+                clientConnectionSocket = None
         else:
             clientConnectionSocket.shutdown(SHUT_RDWR)
             clientConnectionSocket.close()
             print("Client did not send cregister command, connection dropped")
+            clientConnectionSocket = None
 
 def tell_client(message):
     if (clientConnectionSocket is not None):
@@ -183,13 +187,13 @@ def exit_gracefully(_signo, _stack_frame):
     #Close all sockets and exit
     print("Exiting...")
     droneSocket.close()
-    clientSocket.shutdown(SHUT_RDWR)
     clientSocket.close()
     global clientConnectionSocket
-    clientConnectionSocket.shutdown(SHUT_RDWR)
-    clientConnectionSocket.close()
+    if clientConnectionSocket is not None:
+        clientConnectionSocket.close()
     clientThread.join()
     droneThread.join()
+    sys.exit(0)
 
 if __name__ == "__main__":
     # Drone side ip
@@ -216,6 +220,10 @@ if __name__ == "__main__":
     # Thread that handles client messages
     clientThread = threading.Thread(target=wait_for_client, args=[clientSocket])
     clientThread.start()
-
+    
     signal.signal(signal.SIGINT, exit_gracefully)
     signal.signal(signal.SIGTERM, exit_gracefully)
+    
+    #Since the main thread will have to catch the signals, it just loop until signal is received
+    while True:
+        time.sleep(2)
