@@ -34,7 +34,12 @@ def start_deliver(drone, address):
             #Drone did not respond in time assuming it has timed out, inform client
             print("Drone {drone} timed out, telling client...".format(drone=drone))
             connected_drones.pop(drone)
-            tell_client("Failed due to {drone} timeout".format(drone=drone))
+            tell_client("fail: {drone} timed out".format(drone=drone))
+        except error:
+            #Drone packet raised an error, assuming drone is dead
+            print("Drone {drone} reset connection, telling client...".format(drone=drone))
+            connected_drones.pop(drone)
+            tell_client("fail: {drone} reset connection".format(drone=drone))
 
 def wait_for_drone(droneSocket):
     #Handle drone messages
