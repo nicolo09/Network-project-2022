@@ -44,7 +44,7 @@ def client_input(s):
                           message = my_host+":"+"drones:"
                           s.sendall(message.encode());
                     else:
-                        iden=input("You can choose the drone to carry out your delivery. Insert IPv4 or Drone Identifier (insert -1 to go back to address input)\n")
+                        iden=input("You can choose the drone to carry out your delivery. Insert IPv4 or (insert -1 to go back to address input)\n")
                         if len(iden)>0:
                             if iden.lower()==e.lower():
                                 print("Closing Client...")
