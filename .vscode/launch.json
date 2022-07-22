@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: file corrente",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "Drone1",
             "type": "python",
             "request": "launch",
@@ -27,7 +35,7 @@
             "program": "${workspaceFolder}/drones/drone3.py",
             "console": "integratedTerminal",
             "justMyCode": true
-        },        
+        },
         {
             "name": "Gateway",
             "type": "python",
@@ -47,14 +55,25 @@
     ],
     "compounds": [
         {
-          "name": "Drones and gateway",
-          "configurations": ["Gateway", "Drone1", "Drone2", "Drone3"],
-          "stopAll": true
+            "name": "Drones and gateway",
+            "configurations": [
+                "Gateway",
+                "Drone1",
+                "Drone2",
+                "Drone3"
+            ],
+            "stopAll": true
         },
         {
-          "name": "Everything",
-          "configurations": ["Gateway", "Drone1", "Drone2", "Drone3", "Client"],
-          "stopAll": true
+            "name": "Everything",
+            "configurations": [
+                "Gateway",
+                "Drone1",
+                "Drone2",
+                "Drone3",
+                "Client"
+            ],
+            "stopAll": true
         }
-      ]
+    ]
 }
