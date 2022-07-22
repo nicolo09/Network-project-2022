@@ -6,7 +6,7 @@ e="EXIT"
 my_host='10.10.10.1'
 my_port=17000
 gateway_address = '127.0.0.1'
-gateway_port = 18003
+gateway_port = 26000
 BUFFER=256
 d="DRONES"
 
