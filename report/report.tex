@@ -68,7 +68,15 @@ di trasmissione. Per questo si è utilizzato una sequenza di messaggi di control
 loro volta un messaggio di controllo "OK" in risposta. Se il drone o il gateway non ricevono il messaggio di controllo procedono con un tentativo di ritrasmissione in una
 finestra di tempo di 4 secondi, per un massimo di 5 tentativi, prima di considerare l'altro host non raggiungibile.
 
-%TODO Inserire immagine bellina delle ritrasmissioni
+%TODO Scegliere se ruotarla o meno
+\begin{figure}[p]
+    \begin{adjustbox}{addcode={\begin{minipage}{\width}}{\caption{%
+      Schema di Trasmissione.
+      }\end{minipage}},rotate=270,center}
+      \includegraphics[height=0.93\textwidth]{img/trasmissions.pdf}
+      \label{img:er}
+    \end{adjustbox}
+ \end{figure}
 
 \chapter{Protocolli}
 Tutti i comandi sono trasmessi come una lista di campi separati da ":". 
@@ -121,5 +129,15 @@ Qualora si dovesse chiudere il client il gateway rimarrà aperto attendendo una 
 È possibile mandare una richiesta al gateway di visualizzare quali droni sono connessi con il comando "drones" quando si è nel menù di input indirizzo. La scelta del drone da 
 utilizzare per la consegna è da fare specificando l'indirizzo IP.
 È possibile terminare uno qualunque dei componenti con l'interrupt da tastiera CTRL+C.
+
+\chapter{Divisione del progetto}
+La realizzazione dei vari componenti è stata divisa tra i membri del gruppo, ognuno dei quali ha effettuato i test necessari per la propria parte e infine un test generale per
+verificare il funzionamento dell'interazione tra gateway, client e droni.
+Seguono i membri con il lavoro a loro assegnato
+\begin{itemize}
+    \item Filippo Casadei, sviluppo dei droni\\ email: \url{filippo.casadei9@studio.unibo.it}\\ Matricola: 0000971563
+    \item Emma Leonardi, sviluppo del client\\ email: \url{emma.leonardi2@studio.unibo.it}\\ Matricola: 0000971438
+    \item Nicolò Guerra, sviluppo del gateway\\ email: \url{nicolo.guerra@studio.unibo.it} \\ Matricola: 0000971562
+\end{itemize}
 
 \end{document}
