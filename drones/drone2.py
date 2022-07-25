@@ -10,13 +10,21 @@ ip = "192.168.1.10" # IP address of this drone
 gateway_port = 25000 # Port used by the gateway
 gateway_address = ('localhost', gateway_port)
 
+flag = False # flag used for message controls
+delivering = False # defines if this drone is currently delivering or if it's doing nothing
+registered = False # defines if this drone has been registered by the gateway 
+BUFSIZE = 1024 # buffer size
+MAX_ATTEMPTS = 5 # max number of attempts to receive response from the gateway
+TIMEOUT_TIME = 4 # number of seconds before throwing a timeout exception
+
 # Returns the gateway's response to the latest message sent already decoded 
 def talk_to_gateway(message, starting_time, relative_time):
     if s is not None:
         s.sendto(message.encode(), gateway_address)
         response, gateway = s.recvfrom(BUFSIZE)
         # Showing time needed to accomplish drone-gateway comunication
-        print("Packet sending time: " + str((time.time() - relative_time)*1000) + " ms\nTotal elapsed time: " + str((time.time() - starting_time)*1000) + " ms")
+        print("Packet sending time: %.4f ms" % ((time.time() - relative_time)*500))
+        print("Total elapsed time: %.4f ms" % ((time.time() - starting_time)*1000))
         return response.decode('utf-8')
     return ""
 
@@ -30,14 +38,6 @@ def get_command_from_gateway():
         except sk.timeout:
             pass
     return data.decode('utf-8').split(":")
-            
-
-flag = False # flag used for message controls
-delivering = False # defines if this drone is currently delivering or if it's doing nothing
-registered = False # defines if this drone has been registered by the gateway 
-BUFSIZE = 1024 # buffer size
-MAX_ATTEMPTS = 5 # max number of attempts to receive response from the gateway
-TIMEOUT_TIME = 4 # number of seconds before throwing a timeout exception
 
 # When receiving an interrupt signal the drone shuts down
 def exit_on_interrupt(_signo, _stack_frame):
@@ -89,7 +89,7 @@ while tries <= MAX_ATTEMPTS:
 if (not flag) and response == "OK":
     registered = True
     print("Drone 2 ready to serve...")
-    while True:
+    while not flag:
         payload = get_command_from_gateway()
         command = payload[0]
         # Checking requested command
@@ -122,7 +122,6 @@ if (not flag) and response == "OK":
                 if flag or response != "OK":
                     # Response message didn't arrive or didn't match the expected one
                     print("Couldn't receive response from gateway, shutting down")
-                    break
         else:
             # The requested command is undefined,
             # so it will be ignored
