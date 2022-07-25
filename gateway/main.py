@@ -11,10 +11,12 @@ connected_drones = {}
 deliveries_to_do = {}
 deliveries_in_progress = {}
 bufferSize = 1024
-localhost = ""
+localhost = "127.0.0.1"
 timeoutTime = 4
 clientConnectionSocket = None
 deliveriesLock = threading.Lock()
+maxTries = 4
+
 
 def getDroneTrueAddressPort(drone):
     if (SIM == True):
@@ -22,41 +24,54 @@ def getDroneTrueAddressPort(drone):
     else:
         return (drone, connected_drones[drone])
 
+
 def start_deliver(drone, address):
     # Check if drone is available
     if deliveries_in_progress.get(drone) is None:
         # Send deliver command to drone
         print("Asking drone {drone} to deliver to {address}".format(
             drone=drone, address=address))
-        droneSocket.sendto(("deliver:{address}".format(
-            address=address)).encode(), getDroneTrueAddressPort(drone))
-        try:
-            message = ""
-            # Wait for drone to respond discarding every other message
-            while message != "OK":
-                droneSocket.settimeout(timeoutTime)
-                bytesAddressPair, realAddress = droneSocket.recvfrom(
-                    bufferSize)
-                # Get the drone's address and port from message
-                payload = bytesAddressPair.decode("utf-8").split(":")
-                #addressPort = (payload[0], realAddress[1])
-                message = (payload[1])
-                if (message == "OK"):
-                    deliveries_in_progress[drone] = address
-                    print("Drone {drone} is now delivering to {address}".format(
-                        drone=drone, address=address))
-        except timeout:
+        tries = 0
+        exitFlag = False
+        while not exitFlag and tries < maxTries:
+            droneSocket.sendto(("deliver:{address}".format(
+                address=address)).encode(), getDroneTrueAddressPort(drone))
+            try:
+                message = ""
+                # Wait for drone to respond discarding every other message
+                while message != "OK":
+                    droneSocket.settimeout(timeoutTime)
+                    bytesAddressPair, realAddress = droneSocket.recvfrom(
+                        bufferSize)
+                    # Get the drone's address and port from message
+                    payload = bytesAddressPair.decode("utf-8").split(":")
+                    #addressPort = (payload[0], realAddress[1])
+                    message = (payload[1])
+                    if (message == "OK"):
+                        deliveries_in_progress[drone] = address
+                        print("Drone {drone} is now delivering to {address}".format(
+                            drone=drone, address=address))
+                        exitFlag = True
+            except timeout:
+                # Retry
+                print("Drone {drone} response wait time out, retrying...".format(
+                    drone=drone))
+                tries = tries + 1
+            except error:
+                # Drone packet raised an error, assuming drone is dead
+                print("Drone {drone} reset connection, telling client...".format(
+                    drone=drone))
+                connected_drones.pop(drone)
+                tell_client(
+                    "fail: {drone} reset connection".format(drone=drone))
+                exitFlag = True
+        if (exitFlag == False):
             # Drone did not respond in time assuming it has timed out, inform client
             print("Drone {drone} timed out, telling client...".format(
                 drone=drone))
             connected_drones.pop(drone)
             tell_client("fail: {drone} timed out".format(drone=drone))
-        except error:
-            # Drone packet raised an error, assuming drone is dead
-            print("Drone {drone} reset connection, telling client...".format(
-                drone=drone))
-            connected_drones.pop(drone)
-            tell_client("fail: {drone} reset connection".format(drone=drone))
+
 
 def wait_for_drone(droneSocket):
     # Handle drone messages
@@ -92,15 +107,22 @@ def wait_for_drone(droneSocket):
                     print("Drone unregistered on {address}".format(
                         address=addressPort[0]))
                     connected_drones.pop(addressPort)
-                #Sending ACK anyway
+                # Sending ACK anyway
                 droneSocket.sendto(b"OK", realAddress)
             elif (message == "delivered"):
-                msg = "Drone {drone} delivered to {delivery_address}. Now its free.".format(
-                    drone=addressPort, delivery_address=deliveries_in_progress[addressPort[0]])
-                print(msg)
-                deliveries_in_progress.pop(addressPort[0])
-                droneSocket.sendto(b"OK", realAddress)
-                tell_client(msg)
+                if (addressPort in deliveries_in_progress):
+                    msg = "Drone {drone} delivered to {delivery_address}. Now its free.".format(
+                        drone=addressPort, delivery_address=deliveries_in_progress[addressPort[0]])
+                    print(msg)
+                    deliveries_in_progress.pop(addressPort[0])
+                    droneSocket.sendto(b"OK", realAddress)
+                    tell_client(msg)
+                else:
+                    msg = "Drone {drone} delivered to {delivery_address} but was not delivering".format(
+                        drone=addressPort, delivery_address=deliveries_in_progress[addressPort[0]])
+                    print(msg)
+                    droneSocket.sendto(b"NO", realAddress)
+                    tell_client(msg)
             # elif (message == "failed"):
             #     print("Drone {drone} failed to deliver to {delivery_address}. Now its free.".format(
             #         drone=addressPort, delivery_address=deliveries_in_progress[addressPort]))
@@ -119,6 +141,7 @@ def wait_for_drone(droneSocket):
         except OSError:
             print("Drone thread is terminating")
             return
+
 
 def wait_for_client(clientSocket):
     # This while makes it possible for a client to reconnect after a disconnection
@@ -196,7 +219,8 @@ def wait_for_client(clientSocket):
                         else:
                             tell_client("unknown command")
             except error as e:
-                print("Client {client} dropped: {error}".format(client=connectedClient, error=e))
+                print("Client {client} dropped: {error}".format(
+                    client=connectedClient, error=e))
                 clientConnectionSocket.close()
                 closed = True
                 clientConnectionSocket = None
@@ -206,9 +230,11 @@ def wait_for_client(clientSocket):
             print("Client did not send cregister command, connection dropped")
             clientConnectionSocket = None
 
+
 def tell_client(message):
     if (clientConnectionSocket is not None):
         clientConnectionSocket.send(message.encode("utf-8"))
+
 
 def exit_gracefully(_signo, _stack_frame):
     # Close all sockets and exit
@@ -227,6 +253,7 @@ def exit_gracefully(_signo, _stack_frame):
     clientThread.join()
     droneThread.join()
     sys.exit(0)
+
 
 if __name__ == "__main__":
     # Drone side ip
