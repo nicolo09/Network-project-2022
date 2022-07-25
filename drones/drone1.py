@@ -43,9 +43,11 @@ def exit_on_interrupt(_signo, _stack_frame):
     if not delivering and registered:
         print("Unregistering from gateway")
         message = ip + ":unregister"
+        t = time.time()
         for tries in range(1, MAX_ATTEMPTS + 1):
             try:
                 response = talk_to_gateway(message)
+                print("Trasmission time: %f " % (time.time() - t))
                 break
             except sk.timeout:
                 print("Waiting for response failed. Attempt: %d" % tries)
@@ -65,11 +67,13 @@ s.settimeout(TIMEOUT_TIME)
 
 message = ip + ":register"
 tries = 1
+t = time.time()
 while tries <= MAX_ATTEMPTS:
     try:
         # Verifying that the gateway received the message
         # and waiting for a response
         response = talk_to_gateway(message)
+        print("Trasmission time: %f " % (time.time() - t))
         break
     # The response took too much time to arrive
     except sk.timeout:
@@ -100,11 +104,13 @@ if (not flag) and response == "OK":
                 time.sleep(random.randint(1, 5)) 
                 message = ip + ":delivered"
                 print("Delivery successful")
+                t = time.time()
                 for tries in range(1, MAX_ATTEMPTS + 1):
                     try:
                         # Informing the gateway that the delivery was successful
                         # and the drone is ready for the next delivery
                         response = talk_to_gateway(message)
+                        print("Trasmission time: %f " % (time.time() - t))
                         delivering = False
                         break
                     except sk.timeout:
