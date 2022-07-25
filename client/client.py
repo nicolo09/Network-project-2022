@@ -2,9 +2,6 @@ import socket
 import sys
 from threading import Thread
 import threading
-from time import sleep
-
-from sqlalchemy import true
 
 e="EXIT"
 my_host='10.10.10.1'
