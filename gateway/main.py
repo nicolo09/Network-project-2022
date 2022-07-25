@@ -34,6 +34,7 @@ def start_deliver(drone, address):
         tries = 0
         exitFlag = False
         while not exitFlag and tries < maxTries:
+            t1 = time.time()
             droneSocket.sendto(("deliver:{address}".format(
                 address=address)).encode(), getDroneTrueAddressPort(drone))
             try:
@@ -49,8 +50,8 @@ def start_deliver(drone, address):
                     message = (payload[1])
                     if (message == "OK"):
                         deliveries_in_progress[drone] = address
-                        print("Drone {drone} is now delivering to {address}".format(
-                            drone=drone, address=address))
+                        print("Drone {drone} is now delivering to {address}, packet travel time was {time}ms".format(
+                            drone=drone, address=address, time=((time.time() - t1)/2)*1000))
                         exitFlag = True
             except timeout:
                 # Retry
@@ -110,7 +111,7 @@ def wait_for_drone(droneSocket):
                 # Sending ACK anyway
                 droneSocket.sendto(b"OK", realAddress)
             elif (message == "delivered"):
-                if (addressPort in deliveries_in_progress):
+                if (addressPort[0] in deliveries_in_progress):
                     msg = "Drone {drone} delivered to {delivery_address}. Now its free.".format(
                         drone=addressPort, delivery_address=deliveries_in_progress[addressPort[0]])
                     print(msg)
