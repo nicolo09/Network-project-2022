@@ -4,15 +4,23 @@ import sys
 import threading
 import time
 
+# Set to false to disable simulation and work on effective network instead of localhost
+SIM = True
+
 connected_drones = {}
 deliveries_to_do = {}
 deliveries_in_progress = {}
 bufferSize = 1024
-localhost = "127.0.0.1"
+localhost = ""
 timeoutTime = 4
 clientConnectionSocket = None
 deliveriesLock = threading.Lock()
 
+def getDroneTrueAddressPort(drone):
+    if (SIM == True):
+        return (localhost, connected_drones[drone])
+    else:
+        return (drone, connected_drones[drone])
 
 def start_deliver(drone, address):
     # Check if drone is available
@@ -21,7 +29,7 @@ def start_deliver(drone, address):
         print("Asking drone {drone} to deliver to {address}".format(
             drone=drone, address=address))
         droneSocket.sendto(("deliver:{address}".format(
-            address=address)).encode(), (localhost, connected_drones[drone]))
+            address=address)).encode(), getDroneTrueAddressPort(drone))
         try:
             message = ""
             # Wait for drone to respond discarding every other message
@@ -50,14 +58,13 @@ def start_deliver(drone, address):
             connected_drones.pop(drone)
             tell_client("fail: {drone} reset connection".format(drone=drone))
 
-
 def wait_for_drone(droneSocket):
     # Handle drone messages
     print("Thread waiting for a drone to send messages on {this_ip}:{drone_port}".format(
         this_ip=gethostbyname(gethostname()), drone_port=dronePort))
     while True:
-        droneSocket.settimeout(timeoutTime)
         try:
+            droneSocket.settimeout(timeoutTime)
             # This recvfrom will stay blocked for a limited amount of time (timeoutTime), so that this thread can handle deliveries to do
             bytesAddressPair, realAddress = droneSocket.recvfrom(bufferSize)
             # Get the drone's address from message and port from sender address (real port)
@@ -109,10 +116,9 @@ def wait_for_drone(droneSocket):
                     for delivery in deliveries_to_do:
                         start_deliver(delivery, deliveries_to_do[delivery])
                     deliveries_to_do.clear()
-        except error:
+        except OSError:
             print("Drone thread is terminating")
             return
-
 
 def wait_for_client(clientSocket):
     # This while makes it possible for a client to reconnect after a disconnection
@@ -190,8 +196,7 @@ def wait_for_client(clientSocket):
                         else:
                             tell_client("unknown command")
             except error as e:
-                print("Client {client} dropped".format(client=connectedClient))
-                print(e)
+                print("Client {client} dropped: {error}".format(client=connectedClient, error=e))
                 clientConnectionSocket.close()
                 closed = True
                 clientConnectionSocket = None
@@ -201,28 +206,31 @@ def wait_for_client(clientSocket):
             print("Client did not send cregister command, connection dropped")
             clientConnectionSocket = None
 
-
 def tell_client(message):
     if (clientConnectionSocket is not None):
         clientConnectionSocket.send(message.encode("utf-8"))
 
-
 def exit_gracefully(_signo, _stack_frame):
     # Close all sockets and exit
     print("Exiting...")
+    droneSocket.shutdown(SHUT_RDWR)
     droneSocket.close()
-    clientSocket.close()
     global clientConnectionSocket
     if clientConnectionSocket is not None:
+        clientConnectionSocket.shutdown(SHUT_RDWR)
         clientConnectionSocket.close()
+    try:
+        clientSocket.shutdown(SHUT_RDWR)
+    except OSError:
+        pass
+    clientSocket.close()
     clientThread.join()
     droneThread.join()
     sys.exit(0)
 
-
 if __name__ == "__main__":
     # Drone side ip
-    droneIp = "localhost"
+    droneIp = "0.0.0.0"
     # Drone side port
     dronePort = 25000
     # Create a DGRAM (UDP) type socket for drones
@@ -234,7 +242,7 @@ if __name__ == "__main__":
     droneThread.start()
 
     # Client side ip
-    clientIp = "localhost"
+    clientIp = "0.0.0.0"
     # Client side port
     clientPort = 26000
     # Create a STREAM (TCP) type socket for client
