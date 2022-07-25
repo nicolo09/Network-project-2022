@@ -30,9 +30,9 @@ def client_waits(s,lock):
                         lock.acquire()
                         #reading the time 
                         global time_waiting
-                        te=((a-time_waiting)/2)*MILLISECONDS
+                        te=(a-time_waiting)*MILLISECONDS
                         lock.release()
-                        print('Time elapsed to send message: '+str(te)+' milliseconds')
+                        print('Time elapsed to send and recive message: '+str(te)+' milliseconds')
                     else:
                         print('Received message:')
                         print(message)
