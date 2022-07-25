@@ -217,6 +217,11 @@ def wait_for_client(clientSocket):
                             print("Client {client} wants to know all available drones, sending list...".format(
                                 client=addressPort))
                             tell_client(str(connected_drones))
+                        elif (command == "ping"):
+                            # Client asked for a ping
+                            print("Client {client} sent a ping request, answering".format(
+                                client=addressPort))
+                            tell_client("pong")
                         else:
                             tell_client("unknown command")
             except error as e:
