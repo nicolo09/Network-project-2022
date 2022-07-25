@@ -10,13 +10,18 @@ ip = "192.168.1.10" # IP address of this drone
 gateway_port = 25000 # Port used by the gateway
 gateway_address = ('localhost', gateway_port)
 
-def talk_to_gateway(message):
+# Returns the gateway's response to the latest message sent already decoded 
+def talk_to_gateway(message, starting_time, relative_time):
     if s is not None:
         s.sendto(message.encode(), gateway_address)
         response, gateway = s.recvfrom(BUFSIZE)
+        # Showing time needed to accomplish drone-gateway comunication
+        print("Packet sending time: " + str((time.time() - relative_time)*1000) + " ms\nTotal elapsed time: " + str((time.time() - starting_time)*1000) + " ms")
         return response.decode('utf-8')
     return ""
 
+# Using this function to receive commands
+# so that recv function doesn't block interrupt signal
 def get_command_from_gateway():
     data = ""
     while data == "":
@@ -38,13 +43,13 @@ TIMEOUT_TIME = 4 # number of seconds before throwing a timeout exception
 def exit_on_interrupt(_signo, _stack_frame):
     print("Received interrupt signal, shutting down")
     if not delivering and registered:
+        # Telling the gateway that the drone is shutting down
         print("Unregistering from gateway")
         message = ip + ":unregister"
-        t = time.time()
+        start = time.time()
         for tries in range(1, MAX_ATTEMPTS + 1):
             try:
-                response = talk_to_gateway(message)
-                print("Trasmission time: %f " % (time.time() - t))
+                response = talk_to_gateway(message, start, time.time())
                 break
             except sk.timeout:
                 print("Waiting for response failed. Attempt: %d" % tries)
@@ -64,13 +69,12 @@ s.settimeout(TIMEOUT_TIME)
 
 message = ip + ":register"
 tries = 1
-t = time.time()
+start = time.time()
 while tries <= MAX_ATTEMPTS:
     try:
         # Verifying that the gateway received the message
         # and waiting for a response
-        response = talk_to_gateway(message)
-        print("Trasmission time: %f " % (time.time() - t))
+        response = talk_to_gateway(message, start, time.time())
         break
     # The response took too much time to arrive
     except sk.timeout:
@@ -101,13 +105,12 @@ if (not flag) and response == "OK":
                 time.sleep(random.randint(1, 5)) 
                 message = ip + ":delivered"
                 print("Delivery successful")
-                t = time.time()
+                start = time.time()
                 for tries in range(1, MAX_ATTEMPTS + 1):
                     try:
                         # Informing the gateway that the delivery was successful
                         # and the drone is ready for the next delivery
-                        response = talk_to_gateway(message)
-                        print("Trasmission time: %f " % (time.time() - t))
+                        response = talk_to_gateway(message, start, time.time())
                         delivering = False
                         break
                     except sk.timeout:
