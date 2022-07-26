@@ -98,13 +98,13 @@ def wait_for_drone(droneSocket):
                 connected_drones[addressPort[0]] = addressPort[1]
                 droneSocket.sendto(b"OK", realAddress)
             elif (message == "unregister"):
-                if (addressPort in deliveries_in_progress):
+                if (addressPort[0] in deliveries_in_progress):
                     # Drone is unregistering while delivering, inform client
                     print("Drone {drone} unregistering while delivering, informing client...".format(
                         drone=addressPort[0]))
                     tell_client("fail: {drone} unregistered while delivering".format(
                         drone=addressPort[0]))
-                if (addressPort in connected_drones):
+                if (addressPort[0] in connected_drones):
                     print("Drone unregistered on {address}".format(
                         address=addressPort[0]))
                     connected_drones.pop(addressPort)
