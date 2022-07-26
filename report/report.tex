@@ -10,7 +10,6 @@
 \usepackage{tabularx}
 \sisetup{group-separator={\text{\space}}}
 
-% Questo commentalo se vuoi scrivere in inglese.
 \usepackage[italian]{babel}
 
 \usepackage[italian]{cleveref}
@@ -60,6 +59,8 @@ Si devono simulare le conessioni UDP dei device verso il Gateway e la connession
 su ciascun canale trasmissivo, il tempo impiegato per trasmettere il pacchetto UDP ed il tempo impiegato per trasmettere il pacchetto TCP.
 
 \chapter{Trasporto}
+
+La dimensione dei vari buffer utilizzati nel progetto è di 1024 byte. 
 \section{Comunicazione tra gateway e client}
 La comunicazione tra gateway e client è di tipo TCP, è quindi semplice da realizzare poichè non richiede alcun tipo di controllo di trasmissione.
 \section{Comunicazione tra droni e gateway}
@@ -89,7 +90,7 @@ Per le comunicazioni in uscita dal gateway non viene trasmesso l'IP in quanto si
     \item \textbf{cregister}: inviato da client a gateway all'inizio della connessione, permette di registrare il client presso il gateway.
     \item \textbf{drones}: inviato da client a gateway, permette di ottenere la lista dei droni in forma di dictionary (ip-porta).
     \item \textbf{deliver}: inviato da client a gateway, permette di richiedere una consegna di un drone a un indirizzo.
-    \item \textbf{fail}: inviato da gateway a client, indica il fallimento di un comando con un messaggio d'errore.
+    \item \textbf{ping}: inviato da client a gateway, per calcolare il tempo di risposta in millisecondi.
 \end{itemize}
 \section{Comunicazione tra droni e gateway}
 \begin{itemize}
@@ -127,7 +128,7 @@ disponibile. Il client invece cercherà di connettersi e qualora non trovasse ne
 interrompere il sistema digitando "exit", o tornare al menu iniziale digitando "-1".
 Qualora si dovesse chiudere il client il gateway rimarrà aperto attendendo una nuova connessione dal client.
 È possibile mandare una richiesta al gateway di visualizzare quali droni sono connessi con il comando "drones" quando si è nel menù di input indirizzo. La scelta del drone da 
-utilizzare per la consegna è da fare specificando l'indirizzo IP. Il client inoltre ha il comando 'ping' che invia al gateway una richiesta per vedere sulla console il tempo di risposta in millisecondi.
+utilizzare per la consegna è da fare specificando l'indirizzo IP. Il client inoltre ha il comando "ping" che invia al gateway una richiesta per vedere sulla console il tempo di risposta in millisecondi.
 È possibile terminare uno qualunque dei componenti con l'interrupt da tastiera CTRL+C.
 
 \chapter{Divisione del progetto}
