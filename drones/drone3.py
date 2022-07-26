@@ -55,6 +55,9 @@ def exit_on_interrupt(_signo, _stack_frame):
                 print("Waiting for response failed. Attempt: %d" % tries)
                 if tries == MAX_ATTEMPTS:
                     response = ""
+            except ConnectionResetError:
+                response = ""
+                break
         if response != "OK":
             print("Couldn't inform gateway, shutting down anyway")
     # Letting the user read the previous messages before closing
