@@ -116,7 +116,7 @@ if (not flag) and response == "OK":
                         response = talk_to_gateway(message, start, time.time())
                         delivering = False
                         break
-                    except sk.timeout:
+                    except (sk.timeout, ConnectionResetError):
                         print("Waiting for response failed. Attempt: %d" % tries)
                         # The drone stops trying to receive a response after 5 tries
                         if tries == MAX_ATTEMPTS:
